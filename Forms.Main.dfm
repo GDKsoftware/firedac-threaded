@@ -21,15 +21,13 @@ object MainForm: TMainForm
     TabOrder = 0
     OnClick = btnInitializeManagerClick
   end
-  object FDConnection: TFDConnection
-    Params.Strings = (
-      
-        'Database=C:\Sources\Delphi\GitHub\firedac-threaded\Resources\Fir' +
-        'edacThreadedTest.db'
-      'LockingMode=Normal'
-      'DriverID=SQLite')
-    LoginPrompt = False
-    Left = 72
-    Top = 120
+  object btnTestTasks: TButton
+    Left = 56
+    Top = 240
+    Width = 121
+    Height = 25
+    Caption = 'Test tasks'
+    TabOrder = 1
+    OnClick = btnTestTasksClick
   end
 end

@@ -130,11 +130,11 @@
             <Form>MainForm</Form>
             <FormType>dfm</FormType>
         </DCCReference>
-        <DCCReference Include="ThreadedConnections.PoolOld.pas"/>
         <DCCReference Include="ThreadedConnections.Connection.pas"/>
         <DCCReference Include="ThreadedConnections.Interfaces.pas"/>
         <DCCReference Include="ThreadedConnections.Pool.pas"/>
         <DCCReference Include="ThreadedConnections.Thread.pas"/>
+        <DCCReference Include="ThreadedConnections.Singleton.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

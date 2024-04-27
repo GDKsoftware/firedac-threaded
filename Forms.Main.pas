@@ -10,10 +10,11 @@ uses
 
 type
   TMainForm = class(TForm)
-    FDConnection: TFDConnection;
     btnInitializeManager: TButton;
+    btnTestTasks: TButton;
     procedure btnInitializeManagerClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
+    procedure btnTestTasksClick(Sender: TObject);
   private
     { Private declarations }
   public
@@ -26,7 +27,11 @@ var
 implementation
 
 uses
-  System.IOUtils;
+  System.IOUtils,
+  ThreadedConnections.Singleton,
+  FireDAC.Stan.Param,
+  System.UITypes,
+  System.Threading;
 
 const
   ConnectionName = 'FDTHREADED';
@@ -45,6 +50,7 @@ begin
   var Params := TFDPhysSQLiteConnectionDefParams(Definition.Params);
   Params.DriverID := 'SQLite';
   Params.Database := DbPath;
+  Params.LockingMode := TFDSQLiteLockingMode.lmNormal;
 
   Definition.Apply;
 
@@ -72,6 +78,52 @@ begin
     MessageDlg('Query to SQLite database failed.', mtError, [mbOk], 0)
   else
     MessageDlg(Format('Number of tables in SQLite database: %d.', [NbOfTables]), mtError, [mbOk], 0)
+end;
+
+procedure TMainForm.btnTestTasksClick(Sender: TObject);
+begin
+  SetConnectionPoolDefaults('SQLite', ConnectionName);
+
+  var ConnectionPool := GetConnectionPool;
+  var Tasks: TArray<ITask>;
+
+  for var i := 1 to 2 do
+  begin
+    var Task := TTask.Run(
+                  procedure
+                  begin
+                    var Connection := ConnectionPool.GetConnection;
+                    Connection.StartTransaction;
+                    try
+                      var Query := TFDQuery.Create(nil);
+                      try
+                        Query.Connection := Connection;
+                        Query.SQL.Text := 'INSERT INTO Numbers (IntValue) VALUES (:INTVALUE)';
+
+                        for var IntValue := 10 to 20 do
+                        begin
+                          Query.Params[0].AsInteger := (i * IntValue);
+                          Query.ExecSQL;
+                        end;
+                      finally
+                        Query.Free;
+                      end;
+
+                      Connection.Commit;
+                    except
+                      on E: Exception do
+                      begin
+                        Connection.Rollback;
+                        raise;
+                      end;
+                    end;
+                  end);
+
+    Tasks := Tasks + [Task];
+  end;
+
+  TTask.WaitForAll(Tasks);
+  MessageDlg('All tasks are finished.', mtInformation, [mbOK], 0);
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);

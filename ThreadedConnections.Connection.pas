@@ -11,18 +11,18 @@ type
   private
     FThreadId: TThreadId;
     FConnectionName: string;
-    FConnection: TFDConnection;
+    FConnection: TFDCustomConnection;
     function GetThreadId: TThreadId;
     function GetConnectionName: string;
-    function GetConnection: TFDConnection;
+    function GetConnection: TFDCustomConnection;
   public
-    constructor Create(const ThreadId: TThreadId; const ConnectionName: string; const Connection: TFDConnection);
+    constructor Create(const ThreadId: TThreadId; const ConnectionName: string; const Connection: TFDCustomConnection);
 
     function BelongsTo(const Thread: TThreadId; const ConnectionName: string): Boolean;
 
     property ThreadId: TThreadId read GetThreadId;
     property ConnectionName: string read GetConnectionName;
-    property Connection: TFDConnection read GetConnection;
+    property Connection: TFDCustomConnection read GetConnection;
   end;
 
 implementation
@@ -32,7 +32,7 @@ uses
 
 { TThreadedConnection }
 
-constructor TThreadedConnection.Create(const ThreadId: TThreadId; const ConnectionName: string; const Connection: TFDConnection);
+constructor TThreadedConnection.Create(const ThreadId: TThreadId; const ConnectionName: string; const Connection: TFDCustomConnection);
 begin
   inherited Create;
   FThreadId := ThreadId;
@@ -59,7 +59,7 @@ begin
   Result := FConnectionName;
 end;
 
-function TThreadedConnection.GetConnection: TFDConnection;
+function TThreadedConnection.GetConnection: TFDCustomConnection;
 begin
   Result := FConnection;
 end;
