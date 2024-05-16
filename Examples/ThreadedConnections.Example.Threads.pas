@@ -19,7 +19,9 @@ implementation
 
 uses
   FireDAC.Comp.Client,
-  System.SysUtils;
+  System.SysUtils,
+  System.Classes,
+  FireDAC.Stan.Param;
 
 { TInsertNumbersThread }
 

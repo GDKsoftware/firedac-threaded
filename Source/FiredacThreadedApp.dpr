@@ -8,7 +8,7 @@ uses
   ThreadedConnections.Pool in 'ThreadedConnections.Pool.pas',
   ThreadedConnections.Thread in 'ThreadedConnections.Thread.pas',
   ThreadedConnections.Singleton in 'ThreadedConnections.Singleton.pas',
-  ThreadedConnections.Example.Threads in 'Examples\ThreadedConnections.Example.Threads.pas';
+  ThreadedConnections.Example.Threads in '..\Examples\ThreadedConnections.Example.Threads.pas';
 
 {$R *.res}
 
