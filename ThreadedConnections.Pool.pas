@@ -12,6 +12,7 @@ type
 
   TThreadedConnectionPool = class(TInterfacedObject, IThreadedConnectionPool)
   private
+    FLock: TObject;
     FThreadedConnections: TThreadedConnectionList;
     FDefaultConnectionName: string;
     FDriverId: string;
@@ -28,6 +29,9 @@ type
     ///   Returns all the threaded connections for the given thread.
     /// </summary>
     function GetConnectionsForThread(const ThreadId: TThreadId): TArray<IThreadedConnection>;
+
+    procedure ClearConnections;
+    procedure ClearThreadedConnection(const ThreadedConnection: IThreadedConnection);
   public
     constructor Create(const DriverId, DefaultConnectionName: string);
 
@@ -64,12 +68,15 @@ procedure TThreadedConnectionPool.AfterConstruction;
 begin
   inherited;
   FThreadedConnections := TThreadedConnectionList.Create;
+  FLock := TObject.Create;
 end;
 
 procedure TThreadedConnectionPool.BeforeDestruction;
 begin
   inherited;
+  ClearConnections;
   FreeAndNil(FThreadedConnections);
+  FreeAndNil(FLock);
 end;
 
 function TThreadedConnectionPool.GetConnection: TFDCustomConnection;
@@ -91,21 +98,28 @@ end;
 
 function TThreadedConnectionPool.GetConnection(const ConnectionName: string; const ThreadId: TThreadId): TFDCustomConnection;
 begin
-  if not TryFindConnection(ThreadId, ConnectionName, Result) then
-  begin
-    if FDManager.Active then
+  TMonitor.Enter(FLock);
+  try
+    if not TryFindConnection(ThreadId, ConnectionName, Result) then
     begin
-      Result := FDManager.AcquireConnection(ConnectionName, ThreadId.ToString);
-    end
-    else
-    begin
-      Result := TFDCustomConnection.Create(nil);
-      Result.ConnectionDefName := ConnectionName;
-      Result.DriverName := FDriverId;
-    end;
+  //    if FDManager.Active then
+  //    begin
+  //      Result := FDManager.AcquireConnection(ConnectionName, ThreadId.ToString);
+  //    end
+  //    else
+      begin
+        Result := TFDCustomConnection.Create(nil);
+        Result.ConnectionDefName := ConnectionName;
+        Result.CheckConnectionDef;
 
-    var ThreadedConnection := TThreadedConnection.Create(ThreadId, ConnectionName, Result);
-    FThreadedConnections.Add(ThreadedConnection);
+//        Result.DriverName := FDriverId;
+      end;
+
+      var ThreadedConnection := TThreadedConnection.Create(ThreadId, ConnectionName, Result);
+      FThreadedConnections.Add(ThreadedConnection);
+    end;
+  finally
+     TMonitor.Exit(FLock);
   end;
 end;
 
@@ -132,19 +146,35 @@ end;
 
 procedure TThreadedConnectionPool.Clear(const ThreadId: TThreadId);
 begin
-  var ToRemove := GetConnectionsForThread(ThreadId);
+  var ConnectionsToClear := GetConnectionsForThread(ThreadId);
 
-  for var ConnectionInfo in ToRemove do
-  begin
-    try
-      ConnectionInfo.Connection.Close;
-      FreeAndNil(ConnectionInfo.Connection);
-    except
-      // Ignoring exceptions while clearing
-    end;
+  for var ThreadedConnection in ConnectionsToClear do
+    ClearThreadedConnection(ThreadedConnection);
+end;
 
-    FThreadedConnections.Remove(ConnectionInfo);
+procedure TThreadedConnectionPool.ClearConnections;
+begin
+  var Connections := FThreadedConnections.LockList;
+  try
+    var ConnectionsToClear := Connections.ToArray;
+
+    for var ThreadedConnection in ConnectionsToClear do
+      ClearThreadedConnection(ThreadedConnection);
+  finally
+    FThreadedConnections.UnlockList;
   end;
+end;
+
+procedure TThreadedConnectionPool.ClearThreadedConnection(const ThreadedConnection: IThreadedConnection);
+begin
+  try
+    ThreadedConnection.Connection.Close;
+    FreeAndNil(ThreadedConnection.Connection);
+  except
+    // Ignoring exceptions while clearing
+  end;
+
+  FThreadedConnections.Remove(ThreadedConnection);
 end;
 
 function TThreadedConnectionPool.GetConnectionsForThread(const ThreadId: TThreadId): TArray<IThreadedConnection>;

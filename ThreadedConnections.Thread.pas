@@ -12,8 +12,8 @@ type
   private
     FConnectionPool: IThreadedConnectionPool;
   protected
-    function Connection: TFDCustomConnection; overload;
-    function Connection(const ConnectionName: string): TFDCustomConnection; overload;
+    function GetConnection: TFDCustomConnection; overload;
+    function GetConnection(const ConnectionName: string): TFDCustomConnection; overload;
   public
     constructor Create(const CreateSuspended: Boolean; const ConnectionPool: IThreadedConnectionPool);
     procedure BeforeDestruction; override;
@@ -29,12 +29,12 @@ begin
   FConnectionPool := ConnectionPool;
 end;
 
-function TThreadedConnectionThread.Connection: TFDCustomConnection;
+function TThreadedConnectionThread.GetConnection: TFDCustomConnection;
 begin
   Result := FConnectionPool.GetConnection(Self.ThreadID);
 end;
 
-function TThreadedConnectionThread.Connection(const ConnectionName: string): TFDCustomConnection;
+function TThreadedConnectionThread.GetConnection(const ConnectionName: string): TFDCustomConnection;
 begin
   Result := FConnectionPool.GetConnection(ConnectionName, Self.ThreadID);
 end;

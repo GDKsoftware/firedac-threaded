@@ -10,13 +10,16 @@ uses
 
 type
   TMainForm = class(TForm)
-    btnInitializeManager: TButton;
-    btnTestTasks: TButton;
-    procedure btnInitializeManagerClick(Sender: TObject);
+    btnCheckConnection: TButton;
+    btnTestThreads: TButton;
+    procedure btnCheckConnectionClick(Sender: TObject);
     procedure FormDestroy(Sender: TObject);
-    procedure btnTestTasksClick(Sender: TObject);
+    procedure btnTestThreadsClick(Sender: TObject);
+    procedure FormCreate(Sender: TObject);
   private
     { Private declarations }
+    function GetDatabasePath: string;
+    procedure AddDatabaseDefinition;
   public
     { Public declarations }
   end;
@@ -31,29 +34,60 @@ uses
   ThreadedConnections.Singleton,
   FireDAC.Stan.Param,
   System.UITypes,
-  System.Threading;
+  System.Threading,
+  ThreadedConnections.Example.Threads;
 
 const
+  DatabaseDriver = 'SQLite';
   ConnectionName = 'FDTHREADED';
+
 
 {$R *.dfm}
 
-procedure TMainForm.btnInitializeManagerClick(Sender: TObject);
+procedure TMainForm.FormCreate(Sender: TObject);
+begin
+  FDManager.Active := True;
+
+  AddDatabaseDefinition;
+  SetConnectionPoolDefaults(DatabaseDriver, ConnectionName);
+end;
+
+procedure TMainForm.AddDatabaseDefinition;
+begin
+  var Params := TStringList.Create;
+  try
+    var DatabasePath := GetDatabasePath;
+
+    Params.Add('DriverID=' + DatabaseDriver);
+    Params.Add('Database=' + DatabasePath);
+
+    FDManager.AddConnectionDef(ConnectionName, 'SQLite', Params);
+
+    var Definition := FDManager.ConnectionDefs.FindConnectionDef(ConnectionName);
+
+    var DefParams := TFDPhysSQLiteConnectionDefParams(Definition.Params);
+    DefParams.BeginUpdate;
+    try
+      DefParams.LockingMode := TFDSQLiteLockingMode.lmNormal;
+      DefParams.Synchronous := TFDSQLiteSynchronous.snNormal;
+    finally
+      DefParams.EndUpdate;
+    end;
+  finally
+    Params.Free;
+  end;
+end;
+
+function TMainForm.GetDatabasePath: string;
 begin
   var ExePath := TPath.GetDirectoryName(ParamStr(0));
   var DbPath := TPath.Combine(ExePath, '..\..\..\Resources\FiredacThreadedTest.db');
-  DbPath := TPath.GetFullPath(DbPath);
 
-  var Definition := FDManager.ConnectionDefs.AddConnectionDef;
-  Definition.Name := ConnectionName;
+  Result := TPath.GetFullPath(DbPath);
+end;
 
-  var Params := TFDPhysSQLiteConnectionDefParams(Definition.Params);
-  Params.DriverID := 'SQLite';
-  Params.Database := DbPath;
-  Params.LockingMode := TFDSQLiteLockingMode.lmNormal;
-
-  Definition.Apply;
-
+procedure TMainForm.btnCheckConnectionClick(Sender: TObject);
+begin
   var Connection := FDManager.AcquireConnection(ConnectionName, '');
   Connection.Connected := True;
 
@@ -80,50 +114,21 @@ begin
     MessageDlg(Format('Number of tables in SQLite database: %d.', [NbOfTables]), mtError, [mbOk], 0)
 end;
 
-procedure TMainForm.btnTestTasksClick(Sender: TObject);
+procedure TMainForm.btnTestThreadsClick(Sender: TObject);
 begin
-  SetConnectionPoolDefaults('SQLite', ConnectionName);
+  var Threads: TArray<TThread>;
 
-  var ConnectionPool := GetConnectionPool;
-  var Tasks: TArray<ITask>;
-
-  for var i := 1 to 2 do
+  for var i := 100 to 120 do
   begin
-    var Task := TTask.Run(
-                  procedure
-                  begin
-                    var Connection := ConnectionPool.GetConnection;
-                    Connection.StartTransaction;
-                    try
-                      var Query := TFDQuery.Create(nil);
-                      try
-                        Query.Connection := Connection;
-                        Query.SQL.Text := 'INSERT INTO Numbers (IntValue) VALUES (:INTVALUE)';
+    var Thread := TInsertNumbersThread.Create(True, GetConnectionPool);
+    Thread.FreeOnTerminate := True;
 
-                        for var IntValue := 10 to 20 do
-                        begin
-                          Query.Params[0].AsInteger := (i * IntValue);
-                          Query.ExecSQL;
-                        end;
-                      finally
-                        Query.Free;
-                      end;
-
-                      Connection.Commit;
-                    except
-                      on E: Exception do
-                      begin
-                        Connection.Rollback;
-                        raise;
-                      end;
-                    end;
-                  end);
-
-    Tasks := Tasks + [Task];
+    Thread.Number := i;
+    Threads := Threads + [Thread];
   end;
 
-  TTask.WaitForAll(Tasks);
-  MessageDlg('All tasks are finished.', mtInformation, [mbOK], 0);
+  for var Thread in Threads do
+    Thread.Start;
 end;
 
 procedure TMainForm.FormDestroy(Sender: TObject);

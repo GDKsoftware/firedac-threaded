@@ -135,6 +135,7 @@
         <DCCReference Include="ThreadedConnections.Pool.pas"/>
         <DCCReference Include="ThreadedConnections.Thread.pas"/>
         <DCCReference Include="ThreadedConnections.Singleton.pas"/>
+        <DCCReference Include="Examples\ThreadedConnections.Example.Threads.pas"/>
         <BuildConfiguration Include="Base">
             <Key>Base</Key>
         </BuildConfiguration>

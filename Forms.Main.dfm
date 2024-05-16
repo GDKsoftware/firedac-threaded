@@ -10,24 +10,25 @@ object MainForm: TMainForm
   Font.Height = -12
   Font.Name = 'Segoe UI'
   Font.Style = []
+  OnCreate = FormCreate
   OnDestroy = FormDestroy
   TextHeight = 15
-  object btnInitializeManager: TButton
+  object btnCheckConnection: TButton
     Left = 56
     Top = 200
     Width = 121
     Height = 25
-    Caption = 'Initialize manager'
+    Caption = 'Check connection'
     TabOrder = 0
-    OnClick = btnInitializeManagerClick
+    OnClick = btnCheckConnectionClick
   end
-  object btnTestTasks: TButton
+  object btnTestThreads: TButton
     Left = 56
     Top = 240
     Width = 121
     Height = 25
-    Caption = 'Test tasks'
+    Caption = 'Test threading'
     TabOrder = 1
-    OnClick = btnTestTasksClick
+    OnClick = btnTestThreadsClick
   end
 end
